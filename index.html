@@ -504,16 +504,93 @@
             background: rgba(0, 255, 255, 0.05);
         }
         
+        /* BotÃ³n hamburguesa para mÃ³vil */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 255, 255, 0.5);
+        }
+
+        .hamburger-icon {
+            width: 24px;
+            height: 18px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hamburger-icon span {
+            width: 100%;
+            height: 3px;
+            background: #000;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-menu-toggle.active .hamburger-icon span:nth-child(1) {
+            transform: rotate(45deg) translate(6px, 6px);
+        }
+
+        .mobile-menu-toggle.active .hamburger-icon span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .mobile-menu-toggle.active .hamburger-icon span:nth-child(3) {
+            transform: rotate(-45deg) translate(8px, -8px);
+        }
+
+        /* Overlay para cerrar el menÃº */
+        .mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            backdrop-filter: blur(5px);
+        }
+
         @media (max-width: 900px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+            
             .side-menu {
                 left: -260px; /* Hide by default */
                 transition: left 0.3s ease-in-out;
+                z-index: 1000;
             }
+            
+            .side-menu.active {
+                left: 0;
+            }
+            
             .content-area {
                 margin-left: 0;
                 width: 100%;
+                padding-top: 70px; /* Espacio para el botÃ³n hamburguesa */
             }
-            /* We would need a hamburger button to toggle the menu, for now it will be hidden */
+            
+            .mobile-overlay.active {
+                display: block;
+            }
         }
         
         @media (max-width: 768px) {
@@ -610,7 +687,19 @@
 </head>
 <body>
     <div class="page-wrapper">
-        <nav class="side-menu">
+        <!-- BotÃ³n hamburguesa para mÃ³vil -->
+        <button class="mobile-menu-toggle" id="mobileMenuToggle">
+            <div class="hamburger-icon">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </button>
+        
+        <!-- Overlay para cerrar el menÃº en mÃ³vil -->
+        <div class="mobile-overlay" id="mobileOverlay"></div>
+        
+        <nav class="side-menu" id="sideMenu">
             <div class="menu-title">AnÃ¡lisis IBEX 35</div>
             <nav>
                 <a href="#" data-section="live-panel" class="menu-item active">Panel en Vivo</a>
@@ -1407,11 +1496,38 @@
         document.addEventListener('DOMContentLoaded', () => {
             logActivity('AplicaciÃ³n iniciada y corregida.');
             
+            // Funcionalidad del menÃº mÃ³vil
+            const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+            const mobileOverlay = document.getElementById('mobileOverlay');
+            const sideMenu = document.getElementById('sideMenu');
+
+            function toggleMobileMenu() {
+                const isActive = sideMenu.classList.contains('active');
+                
+                if (isActive) {
+                    sideMenu.classList.remove('active');
+                    mobileOverlay.classList.remove('active');
+                    mobileMenuToggle.classList.remove('active');
+                } else {
+                    sideMenu.classList.add('active');
+                    mobileOverlay.classList.add('active');
+                    mobileMenuToggle.classList.add('active');
+                }
+            }
+
+            mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+            mobileOverlay.addEventListener('click', toggleMobileMenu);
+
             dom.menuItems.forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.preventDefault();
                     const sectionId = e.currentTarget.dataset.section;
                     showSection(sectionId);
+                    
+                    // Cerrar el menÃº mÃ³vil al seleccionar una opciÃ³n
+                    if (window.innerWidth <= 900) {
+                        toggleMobileMenu();
+                    }
                 });
             });
             
