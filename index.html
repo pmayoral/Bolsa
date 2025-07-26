@@ -1,1 +1,1438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBEX 35 - Panel de Datos Avanzado</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+            color: #f0f0f0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 35px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px rgba(0, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ibex-title {
+            font-size: 3.5em;
+            font-weight: 900;
+            background: linear-gradient(45deg, #00ffff, #0080ff, #8000ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.3));
+        }
+        
+        .status-indicator {
+            text-align: center;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: 700;
+            margin: 20px auto;
+            display: inline-block;
+            animation: glow-pulse 2s infinite;
+            border: 2px solid;
+            backdrop-filter: blur(10px);
+        }
+        
+        .loading {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffeb3b;
+            border-color: #ffeb3b;
+            box-shadow: 0 0 20px rgba(255, 235, 59, 0.3);
+        }
+        
+        .success {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4caf50;
+            border-color: #4caf50;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+        }
+        
+        .error {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+            border-color: #f44336;
+            box-shadow: 0 0 20px rgba(244, 67, 54, 0.3);
+        }
+        
+        @keyframes glow-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        
+        .ibex-value {
+            font-size: 4.5em;
+            font-weight: 900;
+            text-align: center;
+            margin: 25px 0;
+            padding: 30px;
+            background: rgba(0, 255, 255, 0.05);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 20px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            color: #00ffff;
+            animation: value-glow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes value-glow {
+            from { box-shadow: 0 0 20px rgba(0, 255, 255, 0.2); }
+            to { box-shadow: 0 0 40px rgba(0, 255, 255, 0.4); }
+        }
+        
+        .ibex-change {
+            text-align: center;
+            font-size: 1.8em;
+            font-weight: 800;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 2px solid;
+            backdrop-filter: blur(10px);
+        }
+        
+        .positive {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4caf50;
+            border-color: #4caf50;
+            box-shadow: 0 0 25px rgba(76, 175, 80, 0.3);
+        }
+        
+        .negative {
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+            border-color: #f44336;
+            box-shadow: 0 0 25px rgba(244, 67, 54, 0.3);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin: 35px 0;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px solid rgba(0, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+            transition: left 0.6s;
+        }
+        
+        .stat-card:hover::before {
+            left: 100%;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 20px 40px rgba(0, 255, 255, 0.2);
+            border-color: rgba(0, 255, 255, 0.6);
+        }
+        
+        .stat-label {
+            font-size: 1.1em;
+            color: #b0bec5;
+            margin-bottom: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-value {
+            font-size: 2.2em;
+            font-weight: 900;
+            color: #00ffff;
+            text-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+        
+        .api-sources, .chart-section {
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px solid rgba(0, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 35px;
+            margin: 35px 0;
+            backdrop-filter: blur(15px);
+        }
+        
+        .section-title {
+            font-size: 2.2em;
+            font-weight: 800;
+            background: linear-gradient(45deg, #00ffff, #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        .api-info {
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid #00ffff;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+            color: #e0f7fa;
+        }
+        
+        .api-info strong {
+            color: #00ffff;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            color: #000;
+            border: none;
+            padding: 18px 35px;
+            border-radius: 35px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            box-shadow: 0 10px 20px rgba(0, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+        
+        .btn:hover::before {
+            width: 400px;
+            height: 400px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 255, 255, 0.5);
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #4caf50, #8bc34a);
+        }
+        
+        .btn-success:hover {
+            box-shadow: 0 15px 30px rgba(76, 175, 80, 0.5);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(45deg, #ff9800, #ffc107);
+        }
+        
+        .btn-warning:hover {
+            box-shadow: 0 15px 30px rgba(255, 152, 0, 0.5);
+        }
+        
+        .real-time-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: rgba(76, 175, 80, 0.1);
+            border: 2px solid #4caf50;
+            border-radius: 25px;
+            color: #4caf50;
+            font-weight: 700;
+            margin: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .pulse-dot {
+            width: 10px;
+            height: 10px;
+            background: #4caf50;
+            border-radius: 50%;
+            animation: pulse-dot 1.5s infinite;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+        
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.5); }
+        }
+        
+        .error-message, .success-message {
+            background: rgba(244, 67, 54, 0.1);
+            border: 2px solid #f44336;
+            color: #ffcdd2;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+        
+        .success-message {
+            background: rgba(76, 175, 80, 0.1);
+            border: 2px solid #4caf50;
+            color: #c8e6c9;
+        }
+        
+        .log-container {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 25px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #00ffff;
+            padding-left: 10px;
+        }
+        
+        .chart-container-wrapper {
+            padding: 20px;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+        }
 
+        /* --- New Layout Styles --- */
+        .page-wrapper {
+            display: flex;
+        }
+
+        .side-menu {
+            width: 260px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            background: #0f0f0f;
+            border-right: 2px solid rgba(0, 255, 255, 0.2);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .side-menu .menu-title {
+            font-size: 1.8em;
+            font-weight: 800;
+            text-align: center;
+            background: linear-gradient(45deg, #00ffff, #8000ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+        }
+
+        .side-menu nav a {
+            color: #b0bec5;
+            text-decoration: none;
+            font-size: 1.1em;
+            font-weight: 600;
+            display: block;
+            padding: 15px 20px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .side-menu nav a:hover {
+            background: rgba(0, 255, 255, 0.1);
+            color: #00ffff;
+        }
+
+        .side-menu nav a.active {
+            background: linear-gradient(90deg, rgba(0, 255, 255, 0.2), rgba(0, 128, 255, 0.2));
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+        
+        .content-area {
+            margin-left: 260px;
+            width: calc(100% - 260px);
+            padding: 20px;
+        }
+
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Chart Panel Styles */
+        .chart-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .chart-controls .btn.active {
+             background: linear-gradient(45deg, #8000ff, #0080ff);
+             box-shadow: 0 10px 20px rgba(128, 0, 255, 0.5);
+             color: #fff;
+        }
+
+        /* Historical Panel Styles */
+        .history-controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 20px;
+            background: rgba(0, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .history-controls label {
+            font-weight: 600;
+        }
+
+        .history-controls input[type="date"] {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            color: #f0f0f0;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: inherit;
+        }
+        
+        .history-table-container {
+            overflow-x: auto;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .history-table th, .history-table td {
+            padding: 15px;
+            text-align: right;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+        }
+        .history-table th:first-child, .history-table td:first-child {
+            text-align: left;
+        }
+        
+        .history-table thead {
+            background: rgba(0, 255, 255, 0.1);
+        }
+        
+        .history-table th {
+            font-weight: 700;
+            color: #00ffff;
+        }
+
+        .history-table tbody tr:hover {
+            background: rgba(0, 255, 255, 0.05);
+        }
+        
+        @media (max-width: 900px) {
+            .side-menu {
+                left: -260px; /* Hide by default */
+                transition: left 0.3s ease-in-out;
+            }
+            .content-area {
+                margin-left: 0;
+                width: 100%;
+            }
+            /* We would need a hamburger button to toggle the menu, for now it will be hidden */
+        }
+        
+        @media (max-width: 768px) {
+            .ibex-title { font-size: 2.5em; }
+            .ibex-value { font-size: 3.2em; }
+        }
+
+        /* --- Estilos para la tabla de ExpansiÃ³n --- */
+        #expansion-container {
+            overflow-x: auto;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+        }
+        #expansion-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #expansion-table th, #expansion-table td {
+            padding: 12px 15px;
+            text-align: right;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+            white-space: nowrap;
+        }
+        #expansion-table th:first-child, #expansion-table td:first-child {
+            text-align: left;
+        }
+        #expansion-table th {
+            background-color: rgba(0, 255, 255, 0.1);
+            color: #00ffff;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            backdrop-filter: blur(5px);
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        #expansion-table th .sort-arrow {
+            opacity: 0.5;
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        #expansion-table th[data-sort-direction]::after {
+            opacity: 1;
+        }
+        #expansion-table th[data-sort-direction="asc"] .sort-arrow::before {
+            content: 'â–²';
+        }
+        #expansion-table th[data-sort-direction="desc"] .sort-arrow::before {
+            content: 'â–¼';
+        }
+        #expansion-table tr:hover {
+            background-color: rgba(0, 255, 255, 0.05);
+        }
+        #expansion-status {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+            color: #b0bec5;
+        }
+        #expansion-table .positive {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        #expansion-table .negative {
+            color: #f44336;
+            font-weight: bold;
+        }
+        #expansion-table .neutral {
+            color: #9e9e9e;
+        }
+        .expansion-footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #777;
+        }
+        .expansion-footer a {
+            color: #00ffff;
+            text-decoration: none;
+        }
+        .expansion-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .components-table-container .history-table .positive { color: #4caf50; }
+        .components-table-container .history-table .negative { color: #f44336; }
+
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <nav class="side-menu">
+            <div class="menu-title">AnÃ¡lisis IBEX 35</div>
+            <nav>
+                <a href="#" data-section="live-panel" class="menu-item active">Panel en Vivo</a>
+                <a href="#" data-section="historical-panel" class="menu-item">HistÃ³rico</a>
+                <a href="#" data-section="chart-panel" class="menu-item">GrÃ¡fico</a>
+                <a href="#" data-section="components-panel" class="menu-item">Valores</a>
+            </nav>
+        </nav>
+        <main class="content-area">
+            <section id="live-panel" class="content-section active">
+                <div class="container">
+                     <div class="header">
+                        <h1 class="ibex-title">IBEX 35</h1>
+                        <div class="status-indicator loading" id="statusIndicator">
+                            ðŸ”„ Inicializando...
+                        </div>
+                        
+                        <div class="ibex-value" id="ibexValue">--.---, --</div>
+                        <div class="ibex-change" id="ibexChange">
+                            Esperando datos...
+                        </div>
+                        
+                        <div class="real-time-indicator" id="realTimeIndicator" style="display: none;">
+                            <div class="pulse-dot"></div>
+                            <span>Datos en tiempo real</span>
+                        </div>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">Apertura</div>
+                                <div class="stat-value" id="apertura">---,--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">MÃ¡ximo del dÃ­a</div>
+                                <div class="stat-value" id="maximo">---,--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">MÃ­nimo del dÃ­a</div>
+                                <div class="stat-value" id="minimo">---,--</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">ActualizaciÃ³n</div>
+                                <div class="stat-value" id="updateTimeValue">--:--:--</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-section" id="chartSection">
+                        <h2 class="section-title">GrÃ¡fico IntradÃ­a</h2>
+                        <div class="chart-container-wrapper">
+                            <canvas id="ibexChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="api-sources">
+                        <h2 class="section-title">Fuente de Datos y Logs</h2>
+                        <div class="api-info">
+                            <p><strong>ðŸ”— API Activa:</strong> <span id="currentSource">Ninguna</span></p>
+                            <p><strong>ï¿½ï¿½ Ãšltima actualizaciÃ³n:</strong> <span id="lastUpdate">--</span></p>
+                            <p><strong>ðŸ“¡ Estado de conexiÃ³n:</strong> <span id="connectionStatus">Esperando...</span></p>
+                            <p><strong>ðŸ“ˆ Total de consultas:</strong> <span id="apiCallCount">0</span></p>
+                        </div>
+                        
+                        <div id="messagesContainer"></div>
+                        
+                        <div class="log-container">
+                            <div><strong>ðŸ“‹ Log de actividad:</strong></div>
+                            <div id="logContainer"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="historical-panel" class="content-section">
+                <div class="container">
+                    <div class="header">
+                        <h1 class="ibex-title">HistÃ³rico de Cotizaciones</h1>
+                        <div class="history-controls">
+                            <label for="startDate">Desde:</label>
+                            <input type="date" id="startDate">
+                            <label for="endDate">Hasta:</label>
+                            <input type="date" id="endDate">
+                            <button id="fetch-history-btn" class="btn">Consultar</button>
+                        </div>
+                        <div id="history-table-container">
+                            <p>Seleccione un rango de fechas para ver el histÃ³rico.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="chart-panel" class="content-section">
+                <div class="container">
+                     <div class="header">
+                        <h1 class="ibex-title">GrÃ¡fico HistÃ³rico Avanzado</h1>
+                         <div class="chart-controls">
+                            <button class="btn chart-range-btn" data-range="1d" data-interval="15m">1 DÃ­a</button>
+                            <button class="btn chart-range-btn" data-range="5d" data-interval="30m">5 DÃ­as</button>
+                            <button class="btn chart-range-btn" data-range="15d" data-interval="1d">15 DÃ­as</button>
+                             <button class="btn chart-range-btn active" data-range="1mo" data-interval="1d">1 Mes</button>
+                             <button class="btn chart-range-btn" data-range="6mo" data-interval="1d">6 Meses</button>
+                            <button class="btn chart-range-btn" data-range="1y" data-interval="1d">1 AÃ±o</button>
+                             <button class="btn chart-range-btn" data-range="max" data-interval="1mo">Todo</button>
+                         </div>
+                         <div class="chart-container-wrapper" style="height: 60vh;">
+                            <canvas id="historicalChartCanvas"></canvas>
+                         </div>
+                    </div>
+                </div>
+            </section>
+            <section id="components-panel" class="content-section">
+                 <div class="container">
+                     <div class="header">
+                         <h1 class="ibex-title">Componentes del IBEX 35</h1>
+                         <div id="components-table-container">
+                             <div id="expansion-container">
+                                 <div id="expansion-status">Obteniendo datos fiables de ExpansiÃ³n...</div>
+                                 <table id="expansion-table" style="display:none;">
+                                     <thead>
+                                         <tr>
+                                            <th>Nombre <span class="sort-arrow"></span></th>
+                                            <th>Ãšlt. <span class="sort-arrow"></span></th>
+                                            <th>% Var. <span class="sort-arrow"></span></th>
+                                            <th>Var. <span class="sort-arrow"></span></th>
+                                            <th>% Acu.aÃ±o <span class="sort-arrow"></span></th>
+                                            <th>MÃ¡x. <span class="sort-arrow"></span></th>
+                                            <th>MÃ­n. <span class="sort-arrow"></span></th>
+                                         </tr>
+                                     </thead>
+                                     <tbody id="expansion-data">
+                                         <!-- Los datos se insertarÃ¡n aquÃ­ -->
+                                     </tbody>
+                                 </table>
+                             </div>
+                             <div class="expansion-footer">
+                                 <p>Datos obtenidos de <a href="https://www.expansion.com/mercados/cotizaciones/indices/ibex35_I.IB.html" target="_blank" rel="noopener noreferrer">ExpansiÃ³n.com</a>.</p>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        let state = {
+            liveUpdateIntervalId: null,
+            apiCallCount: 0,
+            liveChart: null,
+            historicalChart: null
+        };
+        
+        const spanishNumberFormat = new Intl.NumberFormat('es-ES', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        const API_SOURCES = {
+            yahoo: { 
+                chartUrl: 'https://query1.finance.yahoo.com/v8/finance/chart/^IBEX',
+                proxy: 'https://cors.eu.org/', // Proxy para APIs JSON
+                quoteUrl: 'https://query1.finance.yahoo.com/v7/finance/quote'
+            },
+            expansion: {
+                proxy: 'https://api.allorigins.win/raw?url='
+            }
+        };
+
+        let originalExpansionTableRows = null; // Almacenar el orden original
+        let isSortable = false; // Evitar aÃ±adir listeners mÃºltiples veces
+
+        async function fetchWithProxy(url, responseType = 'json') {
+            const proxyUrl = `${API_SOURCES.yahoo.proxy}${url}`;
+            const response = await fetch(proxyUrl);
+            updateApiCallCount();
+            if (!response.ok) throw new Error(`Error de red: HTTP ${response.status}`);
+            
+            if (responseType === 'text') {
+                return response.text();
+            }
+            return response.json();
+        }
+
+        const dom = {
+            // Panel en vivo
+            statusIndicator: document.getElementById('statusIndicator'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            lastUpdate: document.getElementById('lastUpdate'),
+            apiCallCount: document.getElementById('apiCallCount'),
+            logContainer: document.getElementById('logContainer'),
+            messagesContainer: document.getElementById('messagesContainer'),
+            ibexValue: document.getElementById('ibexValue'),
+            ibexChange: document.getElementById('ibexChange'),
+            apertura: document.getElementById('apertura'),
+            maximo: document.getElementById('maximo'),
+            minimo: document.getElementById('minimo'),
+            updateTimeValue: document.getElementById('updateTimeValue'),
+            currentSource: document.getElementById('currentSource'),
+            realTimeIndicator: document.getElementById('realTimeIndicator'),
+            chartSection: document.getElementById('chartSection'),
+            // Panel de historial
+            startDate: document.getElementById('startDate'),
+            endDate: document.getElementById('endDate'),
+            fetchHistoryBtn: document.getElementById('fetch-history-btn'),
+            historyTableContainer: document.getElementById('history-table-container'),
+            // Panel de grÃ¡ficos
+            historicalChartCanvas: document.getElementById('historicalChartCanvas'),
+            chartControls: document.querySelector('.chart-controls'),
+            // Panel de componentes
+            componentsTableContainer: document.getElementById('components-table-container'),
+            // MenÃº
+            menuItems: document.querySelectorAll('.menu-item')
+        };
+
+        function updateStatus(message, type = 'loading') { dom.statusIndicator.textContent = message; dom.statusIndicator.className = `status-indicator ${type}`; }
+        function updateConnectionStatus(status) { dom.connectionStatus.textContent = status; }
+        function updateApiCallCount() { dom.apiCallCount.textContent = ++state.apiCallCount; }
+
+        function updateLastUpdateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            dom.lastUpdate.textContent = `${now.toLocaleDateString('es-ES')} ${timeStr}`;
+            dom.updateTimeValue.textContent = timeStr;
+        }
+
+        function logActivity(message) {
+            const timestamp = new Date().toLocaleTimeString('es-ES');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            dom.logContainer.prepend(logEntry);
+            if (dom.logContainer.children.length > 20) dom.logContainer.removeChild(dom.logContainer.lastChild);
+        }
+
+        function showMessage(message, type = 'success') {
+            const messageEl = document.createElement('div');
+            messageEl.className = `${type}-message`;
+            messageEl.innerHTML = `<strong>${type === 'success' ? 'âœ…' : 'âŒ'}:</strong> ${message}`;
+            dom.messagesContainer.appendChild(messageEl);
+            setTimeout(() => { messageEl.remove(); }, 8000);
+        }
+
+        function displayLiveData(data, source) {
+            dom.ibexValue.textContent = data.value ? spanishNumberFormat.format(data.value) : '--.---,--';
+            if (data.change !== undefined && data.percentage !== undefined) {
+                const isPositive = data.change >= 0;
+                const changeText = isPositive ? 
+                    `â–² +${spanishNumberFormat.format(Math.abs(data.change))} (+${data.percentage.toFixed(2)}%)` : 
+                    `â–¼ ${spanishNumberFormat.format(data.change)} (${data.percentage.toFixed(2)}%)`;
+                dom.ibexChange.textContent = changeText;
+                dom.ibexChange.className = isPositive ? 'ibex-change positive' : 'ibex-change negative';
+            }
+            dom.apertura.textContent = data.open ? spanishNumberFormat.format(data.open) : '---,--';
+            dom.maximo.textContent = data.high ? spanishNumberFormat.format(data.high) : '---,--';
+            dom.minimo.textContent = data.low ? spanishNumberFormat.format(data.low) : '---,--';
+            updateLastUpdateTime();
+            dom.currentSource.textContent = source;
+            dom.realTimeIndicator.style.display = 'inline-flex';
+        }
+ 
+        async function fetchLiveData() {
+            updateStatus('ðŸ¢ Conectando con Yahoo Finance...', 'loading');
+            updateConnectionStatus('Yahoo Finance - Conectando...');
+            logActivity('PeticiÃ³n de datos en vivo a Yahoo Finance');
+            
+            try {
+                const url = `${API_SOURCES.yahoo.proxy}${API_SOURCES.yahoo.chartUrl}`;
+                const response = await fetch(url);
+                updateApiCallCount();
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                logActivity('Respuesta de datos en vivo recibida');
+                
+                if (data.chart && data.chart.result && data.chart.result[0]) {
+                    const result = data.chart.result[0];
+                    const meta = result.meta;
+                    const quote = result.indicators.quote[0];
+
+                    const realData = {
+                        value: meta.regularMarketPrice,
+                        change: meta.regularMarketPrice - meta.chartPreviousClose,
+                        percentage: ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100,
+                        open: quote.open[0],
+                        high: Math.max(...quote.high.filter(p => p)),
+                        low: Math.min(...quote.low.filter(p => p))
+                    };
+                    displayLiveData(realData, 'Yahoo Finance (IBEX 35)');
+                    updateStatus('âœ… Datos en vivo actualizados', 'success');
+                    updateConnectionStatus('Yahoo Finance - Conectado');
+                    
+                    const timestamps = result.timestamp;
+                    const openPrices = quote.open;
+                    if (timestamps && openPrices) {
+                        const validLivePoints = timestamps
+                            .map((ts, i) => ({ ts, price: openPrices[i] }))
+                            .filter(p => p.price !== null);
+                        
+                        const labels = validLivePoints.map(p => new Date(p.ts * 1000).toLocaleTimeString('es-ES', {hour: '2-digit', minute:'2-digit'}));
+                        const prices = validLivePoints.map(p => p.price);
+                        renderLiveChart(labels, prices);
+                    }
+                } else {
+                    throw new Error('No se encontraron datos de IBEX 35 en la respuesta.');
+                }
+            } catch (error) {
+                logActivity(`Error en datos en vivo: ${error.message}`);
+                updateStatus('âŒ Error de conexiÃ³n', 'error');
+                updateConnectionStatus('Error');
+            }
+        }
+        
+        async function fetchHistoricalData() {
+            const startDate = dom.startDate.value;
+            const endDate = dom.endDate.value;
+            if (!startDate || !endDate) {
+                showMessage('Por favor, selecciona una fecha de inicio y de fin.', 'error');
+                return;
+            }
+
+            logActivity(`PeticiÃ³n de histÃ³rico de ${startDate} a ${endDate}`);
+            dom.historyTableContainer.innerHTML = '<p>Cargando datos histÃ³ricos...</p>';
+            
+            const startTimestamp = new Date(startDate).getTime() / 1000;
+            const endTimestamp = new Date(endDate).getTime() / 1000;
+            
+            const historicalUrl = `${API_SOURCES.yahoo.chartUrl}?period1=${startTimestamp}&period2=${endTimestamp}&interval=1d&events=history`;
+            
+            try {
+                const response = await fetch(`${API_SOURCES.yahoo.proxy}${historicalUrl}`);
+                updateApiCallCount();
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                logActivity('Respuesta de histÃ³rico recibida');
+                
+                if (data.chart && data.chart.result && data.chart.result[0]) {
+                    renderHistoryTable(data.chart.result[0]);
+                } else {
+                    throw new Error('Formato de datos histÃ³ricos inesperado.');
+                }
+            } catch (error) {
+                logActivity(`Error en histÃ³rico: ${error.message}`);
+                dom.historyTableContainer.innerHTML = `<p style="color: #f44336;">Error al cargar los datos. IntÃ©ntalo de nuevo.</p>`;
+            }
+        }
+        
+        function fetchComponentsData() {
+            logActivity('PeticiÃ³n de componentes del IBEX 35 desde ExpansiÃ³n.');
+            const statusDiv = document.getElementById('expansion-status');
+            const table = document.getElementById('expansion-table');
+            const tableBody = document.getElementById('expansion-data');
+
+            statusDiv.style.display = 'block';
+            statusDiv.style.color = '#b0bec5';
+            statusDiv.innerHTML = 'Obteniendo datos fiables de ExpansiÃ³n...';
+            table.style.display = 'none';
+
+            const targetUrl = 'https://www.expansion.com/mercados/cotizaciones/indices/ibex35_I.IB.html';
+            const proxyUrl = `${API_SOURCES.expansion.proxy}${encodeURIComponent(targetUrl)}`;
+            
+            fetch(proxyUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Error de red al contactar el proxy: ${response.statusText}`);
+                    return response.text();
+                })
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    const dataTable = doc.querySelector('#listado_valores');
+                    if (!dataTable) throw new Error("No se pudo encontrar la tabla '#listado_valores'.");
+                    
+                    const tableRows = dataTable.querySelectorAll('tbody tr');
+                    if (tableRows.length === 0) throw new Error("La tabla de ExpansiÃ³n estÃ¡ vacÃ­a.");
+
+                    tableBody.innerHTML = ''; // Limpiar
+
+                    tableRows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length < 7) return;
+
+                        const name = cells[0]?.textContent.trim();
+                        const lastPrice = cells[1]?.textContent.trim();
+                        const percentChangeText = cells[2]?.textContent.trim();
+                        const maxPrice = cells[3]?.textContent.trim();
+                        const minPrice = cells[4]?.textContent.trim();
+                        const volume = cells[5]?.textContent.trim();
+                        const time = cells[6]?.textContent.trim();
+
+                        if (!name) return;
+
+                        const percentChangeValue = parseFloat(percentChangeText.replace('%', '').replace(',', '.'));
+                        const changeClass = percentChangeValue > 0 ? 'positive' : (percentChangeValue < 0 ? 'negative' : 'neutral');
+                        
+                        const parsePrice = (priceStr) => parseFloat(priceStr.replace(/\./g, '').replace(',', '.'));
+
+                        const maxPriceValue = parsePrice(maxPrice);
+                        const minPriceValue = parsePrice(minPrice);
+                        
+                        const varClass = maxPriceValue > 0 ? 'positive' : (maxPriceValue < 0 ? 'negative' : 'neutral');
+                        const anioClass = minPriceValue > 0 ? 'positive' : (minPriceValue < 0 ? 'negative' : 'neutral');
+
+                        const newRow = document.createElement('tr');
+                        newRow.innerHTML = `
+                            <td>${name}</td>
+                            <td>${lastPrice}</td>
+                            <td class="${changeClass}">${percentChangeText}</td>
+                            <td class="${varClass}">${maxPrice}</td>
+                            <td class="${anioClass}">${minPrice}</td>
+                            <td>${volume}</td>
+                            <td>${time}</td>
+                        `;
+                        tableBody.appendChild(newRow);
+                    });
+
+                    if (tableBody.children.length === 0) throw new Error("No se pudo extraer ningÃºn dato de empresa.");
+
+                    statusDiv.style.display = 'none';
+                    table.style.display = 'table';
+                    logActivity(`Tabla de ExpansiÃ³n mostrada con ${tableBody.children.length} valores.`);
+                
+                     if (!isSortable) {
+                        originalExpansionTableRows = Array.from(tableBody.querySelectorAll('tr'));
+                        makeTableSortable();
+                        isSortable = true;
+                    }
+                })
+                .catch(error => {
+                    logActivity(`Error cargando componentes de ExpansiÃ³n: ${error.message}`);
+                    statusDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                    statusDiv.style.color = '#f44336';
+                });
+        }
+
+        async function fetchAdvancedChartData(range, interval) {
+            logActivity(`PeticiÃ³n de grÃ¡fico para rango ${range}, intervalo ${interval}`);
+            let url;
+
+            if (range === '5d' || range === '15d') {
+                const daysToSubtract = range === '5d' ? 5 : 15;
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setDate(endDate.getDate() - daysToSubtract);
+                const startTimestamp = Math.floor(startDate.getTime() / 1000);
+                const endTimestamp = Math.floor(endDate.getTime() / 1000);
+                url = `${API_SOURCES.yahoo.chartUrl}?period1=${startTimestamp}&period2=${endTimestamp}&interval=${interval}&events=history`;
+            } else {
+                url = `${API_SOURCES.yahoo.chartUrl}?range=${range}&interval=${interval}`;
+            }
+
+            try {
+                const response = await fetch(`${API_SOURCES.yahoo.proxy}${url}`);
+                updateApiCallCount();
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                logActivity(`Respuesta de grÃ¡fico para ${range} recibida`);
+
+                if (data.chart && data.chart.result && data.chart.result[0] && data.chart.result[0].timestamp) {
+                    renderAdvancedChart(data.chart.result[0], range, interval);
+                } else {
+                    throw new Error('No se encontraron datos para el grÃ¡fico avanzado.');
+                }
+            } catch (error) {
+                logActivity(`Error en grÃ¡fico avanzado: ${error.message}`);
+                showMessage(`No se pudieron cargar los datos del grÃ¡fico para el rango ${range}.`, 'error');
+            }
+        }
+
+        function renderHistoryTable(result) {
+            const timestamps = result.timestamp;
+            const quote = result.indicators.quote[0];
+            
+            let tableHTML = `<table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Apertura</th>
+                        <th>MÃ¡ximo</th>
+                        <th>MÃ­nimo</th>
+                        <th>Cierre</th>
+                        <th>Volumen</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            
+            const numberFormatter = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            for (let i = timestamps.length - 1; i >= 0; i--) {
+                const date = new Date(timestamps[i] * 1000).toLocaleDateString('es-ES');
+                tableHTML += `
+                    <tr>
+                        <td>${date}</td>
+                        <td>${quote.open[i] ? numberFormatter.format(quote.open[i]) : 'N/A'}</td>
+                        <td>${quote.high[i] ? numberFormatter.format(quote.high[i]) : 'N/A'}</td>
+                        <td>${quote.low[i] ? numberFormatter.format(quote.low[i]) : 'N/A'}</td>
+                        <td>${quote.close[i] ? numberFormatter.format(quote.close[i]) : 'N/A'}</td>
+                        <td>${quote.volume[i] ? quote.volume[i].toLocaleString('es-ES') : 'N/A'}</td>
+                    </tr>`;
+            }
+            
+            tableHTML += `</tbody></table>`;
+            dom.historyTableContainer.innerHTML = tableHTML;
+            logActivity(`Tabla histÃ³rica mostrada con ${timestamps.length} registros.`);
+        }
+
+        function renderComponentsTable(components) {
+            const container = document.getElementById('components-table-container');
+            let tableHTML = `<table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Nombre <span class="sort-arrow"></span></th>
+                        <th>Ãšltimo <span class="sort-arrow"></span></th>
+                        <th>% Var. <span class="sort-arrow"></span></th>
+                        <th>Var. <span class="sort-arrow"></span></th>
+                        <th>MÃ¡x. <span class="sort-arrow"></span></th>
+                        <th>MÃ­n. <span class="sort-arrow"></span></th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            const numberFormatter = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            
+            components.forEach(quote => {
+                const percentChange = quote.regularMarketChangePercent;
+                const change = quote.regularMarketChange;
+                const percentChangeClass = percentChange >= 0 ? 'positive' : 'negative';
+                const changeClass = change >= 0 ? 'positive' : 'negative';
+
+                tableHTML += `
+                    <tr>
+                        <td>${quote.longName || quote.shortName}</td>
+                        <td>${numberFormatter.format(quote.regularMarketPrice)}</td>
+                        <td class="${percentChangeClass}">${percentChange.toFixed(2)}%</td>
+                        <td class="${changeClass}">${numberFormatter.format(change)}</td>
+                        <td>${numberFormatter.format(quote.regularMarketDayHigh)}</td>
+                        <td>${numberFormatter.format(quote.regularMarketDayLow)}</td>
+                    </tr>`;
+            });
+            
+            tableHTML += `</tbody></table>`;
+            container.innerHTML = tableHTML;
+            logActivity(`Tabla de componentes de Yahoo Finance mostrada con ${components.length} valores.`);
+            
+             if (!isSortable) {
+                originalExpansionTableRows = Array.from(container.querySelectorAll('tbody tr'));
+                // Asignar ID a la nueva tabla para que la ordenaciÃ³n funcione
+                container.querySelector('table').id = 'expansion-table'; 
+                makeTableSortable();
+                isSortable = true;
+            }
+        }
+
+        function renderLiveChart(labels, prices) {
+            dom.chartSection.style.display = 'block';
+            const ctx = document.getElementById('ibexChart').getContext('2d');
+            
+            if (state.liveChart) state.liveChart.destroy();
+            
+            state.liveChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets: [{
+                    label: 'IBEX 35 IntradÃ­a', data: prices, 
+                    borderColor: prices[prices.length - 1] >= prices[0] ? '#4caf50' : '#f44336',
+                    backgroundColor: 'rgba(0,0,0,0)', borderWidth: 2, pointRadius: 0, tension: 0.2
+                }]},
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#b0bec5', maxRotation: 0, maxTicksLimit: 8 }, grid: { color: 'rgba(0, 255, 255, 0.1)' } },
+                        y: { ticks: { color: '#b0bec5' }, grid: { color: 'rgba(0, 255, 255, 0.1)' } }
+                    },
+                    plugins: { legend: { display: false }, tooltip: {
+                        mode: 'index', intersect: false, backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: { size: 14, weight: 'bold' }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 5
+                    }},
+                    interaction: { mode: 'index', intersect: false }
+                }
+            });
+        }
+        
+        function renderAdvancedChart(result, range, interval) {
+            const ctx = dom.historicalChartCanvas.getContext('2d');
+            
+            let validDataPoints = result.timestamp
+                .map((ts, index) => ({
+                    ts: ts,
+                    price: result.indicators.quote[0].close[index]
+                }))
+                .filter(dp => dp.price !== null);
+
+            if (validDataPoints.length === 0) {
+                logActivity(`No se encontraron datos de precios vÃ¡lidos para el rango ${range}.`);
+                if (state.historicalChart) state.historicalChart.destroy();
+                return;
+            }
+            
+            if (state.historicalChart) state.historicalChart.destroy();
+
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { 
+                        ticks: { color: '#b0bec5', maxRotation: 0, autoSkip: false }, // autoSkip: false para controlar manualmente
+                        grid: { color: 'rgba(0, 255, 255, 0.1)' } 
+                    },
+                    y: { 
+                        ticks: { color: '#b0bec5' }, 
+                        grid: { color: 'rgba(0, 255, 255, 0.1)' } 
+                    }
+                },
+                plugins: { 
+                    legend: { display: false }, 
+                    tooltip: {
+                        mode: 'index', intersect: false, backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: { size: 14, weight: 'bold' }, bodyFont: { size: 12 }, padding: 10, cornerRadius: 5
+                    }
+                },
+                interaction: { mode: 'index', intersect: false }
+            };
+
+            let labels;
+            let prices;
+
+            if (range === '5d') {
+                const dataWithSpacers = [];
+                if (validDataPoints.length > 0) {
+                    let lastDateStr = new Date(validDataPoints[0].ts * 1000).toLocaleDateString('es-ES');
+                    dataWithSpacers.push(validDataPoints[0]);
+
+                    for (let i = 1; i < validDataPoints.length; i++) {
+                        const currentDateStr = new Date(validDataPoints[i].ts * 1000).toLocaleDateString('es-ES');
+                        if (currentDateStr !== lastDateStr) {
+                            // AÃ±adir un punto nulo para crear el espacio
+                            dataWithSpacers.push({ ts: null, price: null, isSpacer: true });
+                            lastDateStr = currentDateStr;
+                        }
+                        dataWithSpacers.push(validDataPoints[i]);
+                    }
+                }
+                
+                labels = [];
+                prices = [];
+                
+                for (let i = 0; i < dataWithSpacers.length; i++) {
+                    const dp = dataWithSpacers[i];
+
+                    if (dp.isSpacer) {
+                        labels.push('');
+                        prices.push(null); // Esto crea el hueco en la lÃ­nea
+                        continue;
+                    }
+                    
+                    prices.push(dp.price);
+                    
+                    const date = new Date(dp.ts * 1000);
+                    const dateStr = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+                    const timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+                    const isFirstPointOfDay = (i === 0 || dataWithSpacers[i - 1].isSpacer);
+                    const isLastPointOfDay = (i === dataWithSpacers.length - 1 || (dataWithSpacers[i + 1] && dataWithSpacers[i + 1].isSpacer));
+                    const isIntermediateHour = date.getHours() % 3 === 0 && date.getMinutes() === 0;
+
+                    if (isFirstPointOfDay) {
+                        labels.push([timeStr, dateStr]);
+                    } else if (isLastPointOfDay || isIntermediateHour) {
+                        labels.push(timeStr);
+                    } else {
+                        labels.push('');
+                    }
+                }
+
+            } else {
+                prices = validDataPoints.map(dp => dp.price);
+                chartOptions.scales.x.ticks.autoSkip = false; // We control skipping manually
+
+                if (range === '15d') {
+                     labels = validDataPoints.map((dp, i) => {
+                        if (i % 3 === 0) { // Show date every 3 days
+                            return new Date(dp.ts * 1000).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+                        }
+                        return '';
+                    });
+                } else if (range === '1mo') {
+                    labels = validDataPoints.map((dp, i) => {
+                        if (i % 7 === 0) { // Show date roughly every week
+                            return new Date(dp.ts * 1000).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+                        }
+                        return '';
+                    });
+                } else { // For 1d, 6mo, 1y, max
+                    let lastRenderedKey = '';
+                    labels = validDataPoints.map(dp => {
+                        const date = new Date(dp.ts * 1000);
+                        // This case is for the 1d button (intraday)
+                        if (interval.includes('m') || interval.includes('h')) {
+                            return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                        }
+                        
+                        // For date-based intervals like 6mo, 1y, max
+                        if (range === 'max') {
+                            // For MAX view, show only the year to avoid clutter
+                            const key = date.getFullYear();
+                            if (key !== lastRenderedKey) {
+                                lastRenderedKey = key;
+                                return key.toString();
+                            }
+                        } else { // For 6mo, 1y
+                            // Show month and year for clarity
+                            const key = date.getFullYear() + '-' + date.getMonth();
+                            if (key !== lastRenderedKey) {
+                                lastRenderedKey = key;
+                                return date.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+                            }
+                        }
+                        return '';
+                    });
+                }
+            }
+
+            state.historicalChart = new Chart(ctx, {
+                type: 'line',
+                data: { 
+                    labels: labels, 
+                    datasets: [{ 
+                        label: 'Precio de Cierre', 
+                        data: prices, 
+                        borderColor: '#00ffff', 
+                        backgroundColor: 'rgba(0, 255, 255, 0.1)', 
+                        borderWidth: 2, 
+                        tension: 0.1, 
+                        fill: true 
+                    }] 
+                },
+                options: chartOptions
+            });
+            logActivity(`GrÃ¡fico avanzado renderizado para rango ${range}`);
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.style.display = 'none';
+                section.classList.remove('active');
+            });
+            
+            const activeSection = document.getElementById(sectionId);
+            if (activeSection) {
+                activeSection.style.display = 'block';
+                activeSection.classList.add('active');
+            }
+
+            dom.menuItems.forEach(item => {
+                item.classList.toggle('active', item.dataset.section === sectionId);
+            });
+            
+            // Stop live updates if we move away from the live panel
+            if (sectionId !== 'live-panel' && state.liveUpdateIntervalId) {
+                clearInterval(state.liveUpdateIntervalId);
+                state.liveUpdateIntervalId = null;
+                logActivity('Pausada la actualizaciÃ³n en vivo.');
+            }
+
+            // Trigger data fetching for the selected section
+            switch (sectionId) {
+                case 'live-panel':
+                    if (!state.liveUpdateIntervalId) {
+                        fetchLiveData();
+                        state.liveUpdateIntervalId = setInterval(fetchLiveData, 60000);
+                        logActivity('Activada la actualizaciÃ³n en vivo.');
+                    }
+                    break;
+                case 'chart-panel':
+                    // Load chart only if it hasn't been loaded yet
+                    if (!state.historicalChart) {
+                        const defaultButton = dom.chartControls.querySelector('.btn.active');
+                        fetchAdvancedChartData(defaultButton.dataset.range, defaultButton.dataset.interval);
+                    }
+                    break;
+                case 'historical-panel':
+                    fetchHistoricalData();
+                    break;
+                case 'components-panel':
+                    fetchComponentsData();
+                    break;
+            }
+        }
+
+        function setDefaultDates() {
+            const today = new Date();
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            
+            dom.endDate.value = today.toISOString().split('T')[0];
+            dom.startDate.value = thirtyDaysAgo.toISOString().split('T')[0];
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            logActivity('AplicaciÃ³n iniciada y corregida.');
+            
+            dom.menuItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const sectionId = e.currentTarget.dataset.section;
+                    showSection(sectionId);
+                });
+            });
+            
+            dom.fetchHistoryBtn.addEventListener('click', fetchHistoricalData);
+
+            dom.chartControls.addEventListener('click', (e) => {
+                if(e.target.classList.contains('chart-range-btn')) {
+                    dom.chartControls.querySelector('.active').classList.remove('active');
+                    e.target.classList.add('active');
+                    const range = e.target.dataset.range;
+                    const interval = e.target.dataset.interval;
+                    fetchAdvancedChartData(range, interval);
+                }
+            });
+
+            setDefaultDates();
+            
+            // Ensure initial view is correct
+            const initialSection = document.querySelector('.side-menu nav a.active')?.dataset.section || 'live-panel';
+            showSection(initialSection);
+        });
+    </script>
+</body>
+</html>
